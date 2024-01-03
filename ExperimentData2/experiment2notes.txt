@@ -1,0 +1,9 @@
+Potential Obstacles:
+--------------------
+1.00m - Island begins at 1m- has height of 0.9m - length 2.3m
+1.34m - arch opens at 1.34 - length 2m
+3.30m - island ends
+3.34m - arch ends
+3.40m - shelf on opposite side
+4.40m - arch begins - 0.6m depth ->radiator
+5.00m - arch ends
