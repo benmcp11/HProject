@@ -11,6 +11,9 @@ typedef struct tx_info{
     int8_t txPower;
     bool debug;
     bool packetFlag;
+
+
 }TX_Info;
+
 
 #endif

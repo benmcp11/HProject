@@ -56,6 +56,7 @@
 #define RFEASYLINKTX_TASK_PRIORITY 2
 
 #define USED_PAYLOAD_SPACE 7
+#define N 5
 
 /***** Variable declarations *****/
 static Task_Params rxTaskParams;
@@ -285,7 +286,7 @@ static void txCreatePacket(EasyLink_TxPacket * txPacket){
     txPacket->dstAddr[0] = 0xaa;
 }
 
-static void txPhase(EasyLink_TxPacket txPacket, int iteration, ){
+static void txPhase(EasyLink_TxPacket txPacket, int iteration){
 
     clock_t start, end;
 
@@ -319,103 +320,107 @@ static void txPhase(EasyLink_TxPacket txPacket, int iteration, ){
 }
 
 static int txReceiveCheck(EasyLink_RxPacket* rxPacket){
+    Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+    char message[50];
+    memset(message, 0, sizeof message);
+    snprintf(message, sizeof message, "IN PS\n\r");
+    UART_write(uart, &message, sizeof message);
+    Semaphore_post(UART_sem);
+
+
     if (rxPacket->payload[0] == 1){return -1;}
-
-
     return (int) rxPacket->payload[1];
-
-
 
 }
 
-static void txPhase(EasyLink_TxPacket txPacket, int iteration){
+static void setPinStatus(EasyLink_Status packetStatus){
+
+    if(packetStatus == EasyLink_Status_Success){
+               PIN_setOutputValue(pinHandle, Board_PIN_LED1, !PIN_getOutputValue(Board_PIN_LED1));
+    } else {
+           PIN_setOutputValue(pinHandle, Board_PIN_LED1, !PIN_getOutputValue(Board_PIN_LED1));
+           PIN_setOutputValue(pinHandle, Board_PIN_LED2, !PIN_getOutputValue(Board_PIN_LED2));
+       }
+}
+
+static void txPhaseMulti(EasyLink_TxPacket *txPacket, int iteration){
     uint8_t packetNo = 0;
     int i = 0;
-    int timer = 0;
+
+    int time = 0;
     EasyLink_RxPacket rxPacket = {0};
-    int8_t latestRssi;
     int rxNo = -1;
+
     while(1){
         i = 0;
         txPacket->payload[3] = 0;
 
-        while(i<10){
+        while(i<N){
+
             txPacket->payload[2] = packetNo; // PacketNo
-            if(i==9){
-                txPacket->payload[3] = 1; // Set end flag
-            }
-            EasyLink_Status result = EasyLink_transmit(&txPacket);
+            if(i==N-1){txPacket->payload[3] = 1;} // Set end flag
 
+            EasyLink_Status result = EasyLink_transmit(txPacket);
 
-            if (result == EasyLink_Status_Success) {
-                PIN_setOutputValue(pinHandle, Board_PIN_LED1, !PIN_getOutputValue(Board_PIN_LED1));
-            } else {
-                /* Toggle LED1 and LED2 to indicate error */
+            setPinStatus(result);
 
-                    PIN_setOutputValue(pinHandle, Board_PIN_LED1, !PIN_getOutputValue(Board_PIN_LED1));
-                    PIN_setOutputValue(pinHandle, Board_PIN_LED2, !PIN_getOutputValue(Board_PIN_LED2));
-            }
             i++;
             packetNo++;
 
-
-
         }
+        int count = 0;
+        char message[50];
+
+        while(count<100){
+            count+=1;
+//            Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+//            memset(message, 0, sizeof message);
+//            snprintf(message, sizeof message, "Count: %d\n\r", count);
+//            UART_write(uart, &message, sizeof message);
+//            Semaphore_post(UART_sem);
+        }
+        //Rx section
+
         rxPacket.absTime = 0;
-        rxPacket.rxTimeout = RX_TIMEOUT;
 
-        if (freqInfo.debug == 1){
-            // Toggle DIO1 to indicate RX:
-            GPIO_write(Board_DIO1, 1);
-        }
+        if (freqInfo.debug == 1){GPIO_write(Board_DIO1, 1);};
 
-        // receive two packets on each frequency:
-        EasyLink_Status packetStatus = EasyLink_receive(&rxPacket);
+        rxNo = -1;
+        time = 0;
 
-        if (freqInfo.debug == 1){
-            GPIO_write(Board_DIO1, 0);
-            PIN_setOutputValue(pinHandle, Board_PIN_LED1, 0);
-            PIN_setOutputValue(pinHandle, Board_PIN_LED2, 0);
-        }
+        Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+        memset(message, 0, sizeof message);
+        snprintf(message, sizeof message, "rxNo: %d PL: %d\n\r",rxNo,rxPacket.payload[1]);
+        UART_write(uart, &message, sizeof message);
+        Semaphore_post(UART_sem);
 
 
-        if(packetStatus == EasyLink_Status_Success){
-            PIN_setOutputValue(pinHandle, Board_PIN_LED1, !PIN_getOutputValue(Board_PIN_LED1));
-            rxNo = txReceiveCheck(&rxPacket)
-        } else {
-            PIN_setOutputValue(pinHandle, Board_PIN_LED1, !PIN_getOutputValue(Board_PIN_LED1));
-            PIN_setOutputValue(pinHandle, Board_PIN_LED2, !PIN_getOutputValue(Board_PIN_LED2));
-        }
-        while(rxNo!= 0 && timer < 100000){
+        while(rxNo!= 0 && time < 5000){
             EasyLink_Status packetStatus = EasyLink_receive(&rxPacket);
-            if (freqInfo.debug == 1){
-                GPIO_write(Board_DIO1, 0);
-                PIN_setOutputValue(pinHandle, Board_PIN_LED1, 0);
-                PIN_setOutputValue(pinHandle, Board_PIN_LED2, 0);
-            }
+            setPinStatus(packetStatus);
+
+           if(packetStatus == 0){
+               rxNo = rxPacket.payload[1];
+
+               Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+               memset(message, 0, sizeof message);
+               snprintf(message, sizeof message, "rxNo: %d PL: %d\n\r",rxNo,rxPacket.payload[1]);
+               UART_write(uart, &message, sizeof message);
+               Semaphore_post(UART_sem);
 
 
-            if(packetStatus == EasyLink_Status_Success){
-                PIN_setOutputValue(pinHandle, Board_PIN_LED1, !PIN_getOutputValue(Board_PIN_LED1));
-                rxNo = txReceiveCheck(&rxPacket)
-            } else {
-                PIN_setOutputValue(pinHandle, Board_PIN_LED1, !PIN_getOutputValue(Board_PIN_LED1));
-                PIN_setOutputValue(pinHandle, Board_PIN_LED2, !PIN_getOutputValue(Board_PIN_LED2));
-            }
 
-            timer ++;
+           }
+            time ++;
         }
 
     }
-
-
-
 }
 
 static void txCreatePacketMultiNode(EasyLink_TxPacket * txPacket){
 
     txPacket->payload[0] = 1; //Tx Flag
-    txPacket->payload[1] = txData.nodeID; // Node ID
+    txPacket->payload[1] = freqInfo.nodeID; // Node ID
     txPacket->payload[2] = 0; // Packet No
     txPacket->payload[3] = 0; // EndFlag
 
@@ -423,10 +428,259 @@ static void txCreatePacketMultiNode(EasyLink_TxPacket * txPacket){
     txPacket->dstAddr[0] = 0xaa;
 }
 
+typedef struct receivedPacketStruct{
+    int packetType;
+    int nodeNo;
+    int8_t rssi;
+    uint8_t packetNo;
+
+}receivedPacketStruct;
+
+typedef struct rxReceivedPacketsStruct{
+    receivedPacketStruct txPackets[N];
+
+}rxReceivedPacketsStruct;
+
+
+static void createRxReturnPacket(EasyLink_TxPacket * returnPacket,rxReceivedPacketsStruct * packetsToSend){
+
+    returnPacket->payload[0] = 0; //Tx Flag
+    returnPacket->payload[1] = freqInfo.nodeID; // Node ID
+
+    Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+    char message[50];
+    memset(message, 0, sizeof message);
+    snprintf(message, sizeof message, "IN CREATE RETURN PACKET: %d\n\r",returnPacket->payload[1]);
+    UART_write(uart, &message, sizeof message);
+    Semaphore_post(UART_sem);
+
+
+    int i = 0;
+
+    while(i< N){
+        returnPacket->payload[2+i*3] = packetsToSend->txPackets[i].nodeNo; //TxNodeID[i]
+        returnPacket->payload[3+i*3] = packetsToSend->txPackets[i].rssi; //TxRssi[i]
+        returnPacket->payload[4+i*3] = packetsToSend->txPackets[i].packetNo; //TxPacketNo[i]
+        i+=1;
+    }
+
+    returnPacket->len = N * 3 + 2;
+    returnPacket->dstAddr[0] = 0xaa;
+}
+
+static EasyLink_Status sendRxReturnPacket(rxReceivedPacketsStruct * packetsToSend){
+
+    EasyLink_TxPacket returnPacket = {{0}, 0, 0, {0}};
+    createRxReturnPacket(&returnPacket, packetsToSend);
+    EasyLink_Status result = EasyLink_transmit(&returnPacket);
+
+    Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+    char message[50];
+    memset(message, 0, sizeof message);
+    snprintf(message, sizeof message, "IN SEND RETURN PACKET: %d\n\r", result);
+    UART_write(uart, &message, sizeof message);
+    Semaphore_post(UART_sem);
+
+
+    setPinStatus(result);
+    return result;
+
+};
+
+static void processRxPacket(EasyLink_RxPacket * rxPacket){
+
+    int i = 0;
+    int nWrites = 0;
+    // RxNodeID = payload[1]
+    // TxNodeID[i] = payload[2+i*nWrites]
+    // TxRssi[i] = payload[3+i*nWrites]
+    // TxPacketNo[i] = payload[4+i*nWrites]
 
 
 
+    while(i<1){
+        Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+        char message[300];
+        memset(message, 0, sizeof message);
 
+        //RxNodeID,TxNodeID[1]_TxRssi[1]_TxPacketNo[1],TxNodeID[2]_TxRssi[2]_TxPacketNo[2],...TxNodeID[5]_TxRssi[5]_TxPacketNo[5],Rx->RxHost RSSI
+        snprintf(message, sizeof message, "%d,%d_%d_%d,%d_%d_%d,%d_%d_%d,%d_%d_%d,%d_%d_%d,%d\n\r",
+                 rxPacket->payload[1],
+                 rxPacket->payload[2+i*nWrites],(int8_t)rxPacket->payload[3+i*nWrites],rxPacket->payload[4+i*nWrites],
+                 rxPacket->payload[5+i*nWrites],(int8_t)rxPacket->payload[6+i*nWrites],rxPacket->payload[7+i*nWrites],
+                 rxPacket->payload[8+i*nWrites],(int8_t)rxPacket->payload[9+i*nWrites],rxPacket->payload[10+i*nWrites],
+                 rxPacket->payload[11+i*nWrites],(int8_t)rxPacket->payload[12+i*nWrites],rxPacket->payload[13+i*nWrites],
+                 rxPacket->payload[14+i*nWrites],(int8_t)rxPacket->payload[15+i*nWrites],rxPacket->payload[16+i*nWrites],
+                 rxPacket->rssi);
+        UART_write(uart, &message, sizeof message);
+        i+=1;
+        Semaphore_post(UART_sem);
+    };
+}
+
+
+static void processHostData(EasyLink_TxPacket * returnPacket, rxReceivedPacketsStruct * hostPackets){
+
+    int i = 0;
+    char message[300];
+    memset(message, 0, sizeof message);
+    int MAX_STRING_SIZE = 8;
+
+//    hostPackets->txPackets[i].nodeNo; //TxNodeID[i]
+//    hostPackets->txPackets[i].rssi; //TxRssi[i]
+//    hostPackets->txPackets[i].packetNo; //TxPacketNo[i]
+
+    message[0] = '0';
+
+    while(i<N){
+
+
+        snprintf(message[i+1], 27, "%d_%d_%d, PacketNo: %u",
+                         hostPackets->txPackets[i].nodeNo,
+                         hostPackets->txPackets[i].rssi,
+                         hostPackets->txPackets[i].packetNo);
+        i+=3;
+    }
+    message[i*N+1] ='\0'
+
+
+}
+
+
+static void rxPhaseMulti(){
+    rxReceivedPacketsStruct receivedPacketsArr;
+
+
+    EasyLink_RxPacket rxPacket = {0};
+    EasyLink_Status packetStatus;
+
+    EasyLink_TxPacket returnPacket = {{0}, 0, 0, {0}};
+
+    returnPacket.payload[0] = 0; //Tx Flag
+    returnPacket.payload[1] = freqInfo.nodeID; // Node ID
+    returnPacket.len = 2;
+    returnPacket.dstAddr[0] = 0xaa;
+
+    rxPacket.absTime = 0;
+    rxPacket.rxTimeout = RX_TIMEOUT;
+    int packetCount = 0;
+
+    while(1){
+
+        if (freqInfo.debug == 1){GPIO_write(Board_DIO1, 1);};
+        packetStatus = EasyLink_receive(&rxPacket);
+
+        if (freqInfo.debug == 1){
+            GPIO_write(Board_DIO1, 0);
+            PIN_setOutputValue(pinHandle, Board_PIN_LED1, 0);
+            PIN_setOutputValue(pinHandle, Board_PIN_LED2, 0);
+        }
+
+        setPinStatus(packetStatus);
+        if(packetStatus != EasyLink_Status_Success){continue;};
+
+        // Tx Flag = payload[0]
+        // NodeId = payload[1]
+        // PacketNo = payload[2]
+        // EndFlag = payload[3]
+
+        receivedPacketStruct packetIn;
+
+        // If a Tx Packet
+        if(rxPacket.payload[0] == 1){
+            packetIn.packetType = 1;
+            packetIn.nodeNo = rxPacket.payload[1];
+            packetIn.packetNo = rxPacket.payload[2];
+            packetIn.rssi = rxPacket.rssi;
+
+            receivedPacketsArr.txPackets[packetCount%N] = packetIn;
+
+            packetCount++;
+
+            //If EndFlag set
+
+            if(freqInfo.nodeID == 1 && rxPacket.payload[3] == 1){
+                sendRxReturnPacket(&receivedPacketsArr);
+            }
+
+
+
+        //If an RxPacket
+        } else if(rxPacket.payload[0] == 0){
+
+            //If this node is the host
+            if(freqInfo.nodeID == 0){
+                processRxPacket(&rxPacket);
+
+//                Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+//                char message[50];
+//                memset(message, 0, sizeof message);
+//                snprintf(message, sizeof message, "%d\n\r",rxPacket.payload[1]);
+//                UART_write(uart, &message, sizeof message);
+//                Semaphore_post(UART_sem);
+
+                //If it is the last Rx send packet containing nodeID
+                if(rxPacket.payload[1]== 2){
+
+//                    char message[50];
+//                    Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+//                    memset(message, 0, sizeof message);
+//                    snprintf(message, sizeof message, "IN PAYLOAD == 2, %d\n\r",rxPacket.payload[1]);
+//                    UART_write(uart, &message, sizeof message);
+//                    Semaphore_post(UART_sem);
+
+                    EasyLink_Status result = EasyLink_transmit(&returnPacket);
+                    setPinStatus(result);
+
+//                    Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+//                    memset(message, 0, sizeof message);
+//                    snprintf(message, sizeof message, "SENT: %d\n\r",result);
+//                    UART_write(uart, &message, sizeof message);
+//                    Semaphore_post(UART_sem);
+                }
+            }
+
+
+
+            // If the node before this one AND this is not node 1
+
+            if(freqInfo.nodeID == 2){
+                char message[50];
+                if(rxPacket.payload[1] == 1){
+//                    Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+//
+//                    memset(message, 0, sizeof message);
+//                    snprintf(message, sizeof message, "HERE from 1\n\r");
+//                    UART_write(uart, &message, sizeof message);
+//                    Semaphore_post(UART_sem);
+
+                    int count = 0;
+
+                    while(count<100){
+                        count+=1;
+                        Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+                        memset(message, 0, sizeof message);
+                        snprintf(message, sizeof message, "COUNT: %d\n\r", count);
+                        UART_write(uart, &message, sizeof message);
+                        Semaphore_post(UART_sem);
+
+                    }
+                    sendRxReturnPacket(&receivedPacketsArr);
+                }
+
+//                if(rxPacket.payload[1] == 0){
+//                    Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+//                     memset(message, 0, sizeof message);
+//                     snprintf(message, sizeof message, "HERE from HOST\n\r");
+//                     UART_write(uart, &message, sizeof message);
+//                     Semaphore_post(UART_sem);
+//                }
+
+
+            }
+        }
+    }
+}
 static void rxPhase(){
     EasyLink_RxPacket rxPacket = {0};
     int8_t latestRssi;
@@ -521,15 +775,15 @@ static void rfEasyLinkRxFnxNew(UArg arg0, UArg arg1){
     rxInfo.prevPacketNumber = 0;
 
     EasyLink_TxPacket txPacket = {{0}, 0, 0, {0}};
-    txCreatePacket(&txPacket);
+    txCreatePacketMultiNode(&txPacket);
 
     int i = 0;
     while(1) {
-            if(freqInfo.type ==1){
-                txPhase(txPacket, i);
+            if(freqInfo.type == 1){
+                txPhaseMulti(&txPacket, i);
             }
             else if(freqInfo.type == 0){
-                rxPhase();
+                rxPhaseMulti();
             }
         }
 }

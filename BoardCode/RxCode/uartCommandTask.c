@@ -123,7 +123,10 @@ static void commandInterface() {
                                 "- setnum: Set the number of frequencies the receiver should cycle through\n\r"
                                 "- resetfreq: Reset the receiver's frequency list to defaults\n\r"
                                 "- setfreq: Set one of the frequencies in the list to a custom value\n\r"
-                                "- setdebug: Turn the Debugging LED's ON or OFF\n\r";
+                                "- setdebug: Turn the Debugging LED's ON or OFF\n\r"
+                                "- setType: Set board as Tx or Rx\n\r"
+                                "- setnumrx: Set board as Tx or Rx\n\r"
+                                "- setid: Set nodeID\n\r";
             UART_write(uart, &message, sizeof message);
         } 
         else if (strcmp(input_buffer, "setfreq") == 0) {
@@ -221,8 +224,13 @@ static void commandInterface() {
 
             char message2[100];
             memset(message2, 0, sizeof message2);
-            snprintf(message2, sizeof message2, "\n\n\tType: %d\n\r\tHorizontal Distance: %.3f m\n\r", freqInfo.type, freqInfo.distanceMetres);
+            snprintf(message2, sizeof message2, "\n\n\tType: %d\n\r", freqInfo.type);
             UART_write(uart, &message2, sizeof message2);
+
+            char message3[100];
+            memset(message3, 0, sizeof message3);
+            snprintf(message3, sizeof message3, "\n\n\tNodeID: %d\n\r", freqInfo.nodeID);
+            UART_write(uart, &message3, sizeof message3);
 
         }
         else if (strcmp(input_buffer, "setdebug") == 0) {
@@ -248,7 +256,7 @@ static void commandInterface() {
                         UART_write(uart, &message, sizeof message);
                     }
                 }
-        else if(strcmp(input_buffer, "change") == 0){
+        else if(strcmp(input_buffer, "setType") == 0){
 
             char message[] = "Enter 0 for Rx and 1 for Tx:\r\n";
             UART_write(uart, &message, sizeof message);
@@ -271,6 +279,60 @@ static void commandInterface() {
            }
 
         }
+
+        else if(strcmp(input_buffer, "setid") == 0){
+
+            char message[] = "Enter Node ID:\r\n";
+            UART_write(uart, &message, sizeof message);
+
+            if (getUARTInput(uart, input_buffer, sizeof input_buffer) == -1) {
+                                    /* Input failed due to buffer running out of space */
+                char message[] = "Input buffer ran out.\n\r\n";
+                UART_write(uart, &message, sizeof message);
+                continue;
+            }
+
+
+            int nodeID;
+            nodeID = atoi(input_buffer);
+
+            if(nodeID<0){
+                char message[] = "Invalid number/input. Node ID must be > -1\n\r\n";
+                UART_write(uart, &message, sizeof message);
+                continue;
+            }
+           freqInfo.nodeID = nodeID;
+           NVS_write(nvsRegion, 0, &freqInfo, sizeof(freqInfo), NVS_WRITE_ERASE);
+
+
+        }
+        else if(strcmp(input_buffer, "setnumrx") == 0){
+
+             char message[] = "Enter Number of Rx Nodes:\r\n";
+             UART_write(uart, &message, sizeof message);
+
+             if (getUARTInput(uart, input_buffer, sizeof input_buffer) == -1) {
+                                     /* Input failed due to buffer running out of space */
+                 char message[] = "Input buffer ran out.\n\r\n";
+                 UART_write(uart, &message, sizeof message);
+                 continue;
+             }
+
+
+             int numRx;
+             numRx = atoi(input_buffer);
+
+             if(numRx<1){
+                 char message[] = "Invalid number/input. Node ID must be > 0\n\r\n";
+                 UART_write(uart, &message, sizeof message);
+                 continue;
+             }
+            freqInfo.numberOfRx = numRx;
+            NVS_write(nvsRegion, 0, &freqInfo, sizeof(freqInfo), NVS_WRITE_ERASE);
+
+
+         }
+
         else if(strcmp(input_buffer, "setdis") == 0){
 
             char message[] = "Enter distance:\r\n";

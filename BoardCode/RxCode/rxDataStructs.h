@@ -21,6 +21,7 @@ typedef struct rxPacket_info{
     int iteration;
     uint8_t timeTaken;
     float rcvDistance;
+
 }rxPacketInfo;
 
 typedef struct rxFrequencies{
@@ -31,7 +32,12 @@ typedef struct rxFrequencies{
     int setup;
     float distanceMetres;
     float vDistance;
+    int nodeID;
+    int numberOfRx;
+
 }rxFrequencies;
+
+
 
 void setFreqDefaults(rxFrequencies *rxF);
 
