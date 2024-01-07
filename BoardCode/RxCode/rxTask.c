@@ -519,30 +519,37 @@ static void processRxPacket(EasyLink_RxPacket * rxPacket){
 }
 
 
-static void processHostData(EasyLink_TxPacket * returnPacket, rxReceivedPacketsStruct * hostPackets){
+static void processHostData(rxReceivedPacketsStruct * hostPackets){
 
     int i = 0;
-    char message[300];
-    memset(message, 0, sizeof message);
-    int MAX_STRING_SIZE = 8;
 
 //    hostPackets->txPackets[i].nodeNo; //TxNodeID[i]
 //    hostPackets->txPackets[i].rssi; //TxRssi[i]
 //    hostPackets->txPackets[i].packetNo; //TxPacketNo[i]
 
-    message[0] = '0';
+//    char deb[300];
+//    Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+//    memset(deb, 0, sizeof deb);
+//    snprintf(deb, sizeof deb, "IN PROCESS\n\r");
+//    UART_write(uart, &deb, sizeof deb);
+//    Semaphore_post(UART_sem);
 
-    while(i<N){
+    char message[300];
+    memset(message, 0, sizeof message);
+
+    snprintf(message, sizeof message, "%d,%d_%d_%d,%d_%d_%d,%d_%d_%d,%d_%d_%d,%d_%d_%d,%d\n\r",
+             0,
+             hostPackets->txPackets[0].nodeNo, hostPackets->txPackets[0].rssi,hostPackets->txPackets[0].packetNo,
+             hostPackets->txPackets[1].nodeNo, hostPackets->txPackets[1].rssi,hostPackets->txPackets[1].packetNo,
+             hostPackets->txPackets[2].nodeNo, hostPackets->txPackets[2].rssi,hostPackets->txPackets[2].packetNo,
+             hostPackets->txPackets[3].nodeNo, hostPackets->txPackets[3].rssi,hostPackets->txPackets[3].packetNo,
+             hostPackets->txPackets[4].nodeNo, hostPackets->txPackets[4].rssi,hostPackets->txPackets[4].packetNo,
+             9);
 
 
-        snprintf(message[i+1], 27, "%d_%d_%d, PacketNo: %u",
-                         hostPackets->txPackets[i].nodeNo,
-                         hostPackets->txPackets[i].rssi,
-                         hostPackets->txPackets[i].packetNo);
-        i+=3;
-    }
-    message[i*N+1] ='\0'
-
+    Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+    UART_write(uart, &message, sizeof message);
+    Semaphore_post(UART_sem);
 
 }
 
@@ -607,20 +614,20 @@ static void rxPhaseMulti(){
 
         //If an RxPacket
         } else if(rxPacket.payload[0] == 0){
+            char message[50];
 
             //If this node is the host
             if(freqInfo.nodeID == 0){
                 processRxPacket(&rxPacket);
 
 //                Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
-//                char message[50];
 //                memset(message, 0, sizeof message);
 //                snprintf(message, sizeof message, "%d\n\r",rxPacket.payload[1]);
 //                UART_write(uart, &message, sizeof message);
 //                Semaphore_post(UART_sem);
 
                 //If it is the last Rx send packet containing nodeID
-                if(rxPacket.payload[1]== 2){
+                if((int)rxPacket.payload[1] == freqInfo.numberOfRx-1){
 
 //                    char message[50];
 //                    Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
@@ -628,6 +635,7 @@ static void rxPhaseMulti(){
 //                    snprintf(message, sizeof message, "IN PAYLOAD == 2, %d\n\r",rxPacket.payload[1]);
 //                    UART_write(uart, &message, sizeof message);
 //                    Semaphore_post(UART_sem);
+                    processHostData(&receivedPacketsArr);
 
                     EasyLink_Status result = EasyLink_transmit(&returnPacket);
                     setPinStatus(result);
@@ -644,7 +652,7 @@ static void rxPhaseMulti(){
 
             // If the node before this one AND this is not node 1
 
-            if(freqInfo.nodeID == 2){
+            if(freqInfo.nodeID == freqInfo.numberOfRx-1){
                 char message[50];
                 if(rxPacket.payload[1] == 1){
 //                    Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
@@ -654,9 +662,11 @@ static void rxPhaseMulti(){
 //                    UART_write(uart, &message, sizeof message);
 //                    Semaphore_post(UART_sem);
 
+
+                    // Delay Loop to allow Host Rx to display results of Rx1
                     int count = 0;
 
-                    while(count<100){
+                    while(count<4){
                         count+=1;
                         Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
                         memset(message, 0, sizeof message);
