@@ -7,3 +7,7 @@ Tx Distances in filename taken from wardrobe ()
 X = bathroom to window
 Y = wardrobe to Tv
 Z = floor to ceiling
+
+Rx0(,,)
+Rx1(,,)
+Rx2(1.6,len-0.3,1.58)
