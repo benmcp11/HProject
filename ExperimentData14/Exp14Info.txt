@@ -1,0 +1,9 @@
+In my room, 3 Rx, 1 Tx
+
+Rx 2 in front of Tv, Rx 0 Bathroom side wardrobe, Rx 1 Window side Wardrobe
+
+Tx Distances in filename taken from wardrobe ()
+
+X = bathroom to window
+Y = wardrobe to Tv
+Z = floor to ceiling
