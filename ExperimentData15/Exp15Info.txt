@@ -1,0 +1,13 @@
+In both bedrooms, 3 Rx, 1 Tx
+
+Rx 0 on radiator in front bedroom, Rx 2 Bathroom side wardrobe, Rx 1 Window side Wardrobe
+
+Tx Distances in filename taken from wardrobe ()
+
+X = bathroom to window
+Y = wardrobe to Backwall in bedroom2
+Z = floor to ceiling
+
+Rx0(1.5,MAX,0.73)
+Rx1(,,)
+Rx2(1.6,len-0.3,1.58)

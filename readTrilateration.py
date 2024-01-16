@@ -4,11 +4,11 @@ import time
 
 ser = serial.Serial('COM4', baudrate=115200)  # Replace '/dev/tty.usbserial' with your UART port and configure other settings as needed
 
-txX = 1
-txY = 1
+txX = 2
+txY = 7
 txZ = 0.75
 
-csv_filename = f'ExperimentData14\Exp14_Trilateration_Tx(x{txX}m, y{txY}m, z{txZ}m,).csv'
+csv_filename = f'ExperimentData16\Exp16_Trilateration_Tx(x{txX}m, y{txY}m, z{txZ}m,).csv'
 
 csv_header = ['RxNID', 'TXNID', 'PacketNo', 'RSSI']
 
@@ -40,7 +40,7 @@ with open(csv_filename, 'w', newline='') as csvfile:
                     # # Flush the CSV file to ensure data is written immediately
                     csvfile.flush()
 
-                if count>20:
+                if count>21:
                     break
                 count+=1
             else:

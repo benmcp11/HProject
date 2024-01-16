@@ -1,0 +1,28 @@
+Rx0 - cell
+
+X - 1.85m away from cell door
+Y - 0.55m away from back wall
+Z - 1.65m high
+
+(,,)
+
+
+Rx1 - My room
+Middle of wardrobe, see exp14 and 15 for dimensions
+(,,)
+
+
+Rx2- Hallway
+
+X - 0.3m away from hall wall
+Y - 2.2m away from back hall wall (onto my bathroom)
+Z - 1.2m high
+(,,)
+
+
+All filename coordinates are taken from:
+X -> bedroom wall bathroom side
+Y -> wardrobe
+Z -> floor to ceiling
+
+Doors were left open
