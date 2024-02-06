@@ -328,6 +328,7 @@ static void commandInterface() {
                  continue;
              }
             freqInfo.numberOfRx = numRx;
+            freqInfo.sendPacket = 1;
             NVS_write(nvsRegion, 0, &freqInfo, sizeof(freqInfo), NVS_WRITE_ERASE);
 
 

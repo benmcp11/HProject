@@ -34,6 +34,7 @@ typedef struct rxFrequencies{
     float vDistance;
     int nodeID;
     int numberOfRx;
+    int sendPacket;
 
 }rxFrequencies;
 

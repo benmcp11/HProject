@@ -34,7 +34,9 @@
 #include "rxDataStructs.h"
 #include "DataStructs.h"
 
-
+#include <math.h>
+#include <string.h>
+#include <stdlib.h>
 
 /***** Defines *****/
 
@@ -438,8 +440,11 @@ typedef struct receivedPacketStruct{
 
 typedef struct rxReceivedPacketsStruct{
     receivedPacketStruct txPackets[N];
+    int8_t rssiArray[10];
+
 
 }rxReceivedPacketsStruct;
+
 
 
 static void createRxReturnPacket(EasyLink_TxPacket * returnPacket,rxReceivedPacketsStruct * packetsToSend){
@@ -464,7 +469,14 @@ static void createRxReturnPacket(EasyLink_TxPacket * returnPacket,rxReceivedPack
         i+=1;
     }
 
-    returnPacket->len = N * 3 + 2;
+    int j = 0;
+
+    while(j<freqInfo.numberOfRx){
+        returnPacket->payload[N * 3 + 2 +j] = packetsToSend->rssiArray[j];
+        j++;
+    }
+
+    returnPacket->len = N * 3 + 2 + freqInfo.numberOfRx;
     returnPacket->dstAddr[0] = 0xaa;
 }
 
@@ -487,6 +499,7 @@ static EasyLink_Status sendRxReturnPacket(rxReceivedPacketsStruct * packetsToSen
 
 };
 
+
 static void processRxPacket(EasyLink_RxPacket * rxPacket){
 
     int i = 0;
@@ -496,6 +509,7 @@ static void processRxPacket(EasyLink_RxPacket * rxPacket){
     // TxRssi[i] = payload[3+i*nWrites]
     // TxPacketNo[i] = payload[4+i*nWrites]
 
+    int j = 0;
 
 
     while(i<1){
@@ -504,7 +518,7 @@ static void processRxPacket(EasyLink_RxPacket * rxPacket){
         memset(message, 0, sizeof message);
 
         //RxNodeID,TxNodeID[1]_TxRssi[1]_TxPacketNo[1],TxNodeID[2]_TxRssi[2]_TxPacketNo[2],...TxNodeID[5]_TxRssi[5]_TxPacketNo[5],Rx->RxHost RSSI
-        snprintf(message, sizeof message, "%d,%d_%d_%d,%d_%d_%d,%d_%d_%d,%d_%d_%d,%d_%d_%d,%d\n\r",
+        snprintf(message, sizeof message, "%d,%d_%d_%d,%d_%d_%d,%d_%d_%d,%d_%d_%d,%d_%d_%d,%d,",
                  rxPacket->payload[1],
                  rxPacket->payload[2+i*nWrites],(int8_t)rxPacket->payload[3+i*nWrites],rxPacket->payload[4+i*nWrites],
                  rxPacket->payload[5+i*nWrites],(int8_t)rxPacket->payload[6+i*nWrites],rxPacket->payload[7+i*nWrites],
@@ -512,11 +526,29 @@ static void processRxPacket(EasyLink_RxPacket * rxPacket){
                  rxPacket->payload[11+i*nWrites],(int8_t)rxPacket->payload[12+i*nWrites],rxPacket->payload[13+i*nWrites],
                  rxPacket->payload[14+i*nWrites],(int8_t)rxPacket->payload[15+i*nWrites],rxPacket->payload[16+i*nWrites],
                  rxPacket->rssi);
+
+        char rssiStr[12]; // Twice the size for numbers and underscores
+        memset(rssiStr,0, sizeof(rssiStr));
+
+        while(j<freqInfo.numberOfRx){
+            if(j<freqInfo.numberOfRx-1){
+                snprintf(rssiStr, sizeof rssiStr, "%d_",(int8_t)rxPacket->payload[17+j]);
+            }else{
+                snprintf(rssiStr, sizeof rssiStr, "%d\n\r",(int8_t)rxPacket->payload[17+j]);
+            }
+
+            strcat(message, rssiStr);
+            j++;
+        }
+
+
+
         UART_write(uart, &message, sizeof message);
         i+=1;
         Semaphore_post(UART_sem);
     };
 }
+
 
 
 static void processHostData(rxReceivedPacketsStruct * hostPackets){
@@ -547,15 +579,30 @@ static void processHostData(rxReceivedPacketsStruct * hostPackets){
              9);
 
 
+
+
     Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
     UART_write(uart, &message, sizeof message);
     Semaphore_post(UART_sem);
 
 }
 
+typedef struct RxNode{
+    int nodeNo;
+    int8_t lastRssi;
+    int x;
+    int y;
+    int n;
+
+
+}rxNode;
+
+
 
 static void rxPhaseMulti(){
     rxReceivedPacketsStruct receivedPacketsArr;
+
+//    rxNode rxNodeArr[freqInfo.numberOfRx];
 
 
     EasyLink_RxPacket rxPacket = {0};
@@ -611,10 +658,13 @@ static void rxPhaseMulti(){
             }
 
 
-
         //If an RxPacket
         } else if(rxPacket.payload[0] == 0){
             char message[50];
+
+            receivedPacketsArr.rssiArray[(int)rxPacket.payload[1]] = rxPacket.rssi;
+
+
 
             //If this node is the host
             if(freqInfo.nodeID == 0){
@@ -652,9 +702,11 @@ static void rxPhaseMulti(){
 
             // If the node before this one AND this is not node 1
 
-            if(freqInfo.nodeID == freqInfo.numberOfRx-1){
+            if(freqInfo.nodeID > 1){
                 char message[50];
-                if(rxPacket.payload[1] == 1){
+                int rxNo = rxPacket.payload[1];
+
+                if(rxNo == freqInfo.nodeID - 1){
 //                    Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
 //
 //                    memset(message, 0, sizeof message);
@@ -666,17 +718,34 @@ static void rxPhaseMulti(){
                     // Delay Loop to allow Host Rx to display results of Rx1
                     int count = 0;
 
-                    while(count<4){
-                        count+=1;
-                        Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
-                        memset(message, 0, sizeof message);
-                        snprintf(message, sizeof message, "COUNT: %d\n\r", count);
-                        UART_write(uart, &message, sizeof message);
-                        Semaphore_post(UART_sem);
+                    if(freqInfo.nodeID == 3){
+                        while(count<4){
 
+                            Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+                            memset(message, 0, sizeof message);
+                            snprintf(message, sizeof message, "RxNodes: %d\n\r", receivedPacketsArr.rssiArray[count]);
+                            UART_write(uart, &message, sizeof message);
+                            Semaphore_post(UART_sem);
+                            count+=1;
+
+                        }
+                    } else{
+                        while(count<4){
+
+                            Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
+                            memset(message, 0, sizeof message);
+                            snprintf(message, sizeof message, "COUNT: %d\n\r",count);
+                            UART_write(uart, &message, sizeof message);
+                            Semaphore_post(UART_sem);
+                            count+=1;
+
+                        }
                     }
+
                     sendRxReturnPacket(&receivedPacketsArr);
                 }
+
+
 
 //                if(rxPacket.payload[1] == 0){
 //                    Semaphore_pend(UART_sem, BIOS_WAIT_FOREVER);
