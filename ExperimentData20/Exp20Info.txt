@@ -1,0 +1,5 @@
+Rx set up downstairs in a row , x = 0
+
+Board placed on car and driven from rx0 in exp1 with all Rxs 
+
+from rx0 to rx3 with only rx0, rx1, rx3 being used (Rx3 was saved as rx2)

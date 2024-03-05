@@ -1,7 +1,9 @@
 In my room: x vals from wall w bathroom. 
 In spare room: x vals from wall with hall, need to subtract 0.72
 
-0 in spare room,
-1 window side wardrobe,
-2 bathroom side wardrobe,
-3 hallway
+
+
+0 in spare room, (1.7-0.72, 8-0.4+0.63,1.73)
+1 window side wardrobe, (2.85, 0.63, WH)
+2 bathroom side wardrobe, (1.1, 0.63, WH)
+3 hallway (-0.67-0.72, 2.2+3.1+0.63, 1.2)

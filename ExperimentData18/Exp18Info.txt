@@ -1,0 +1,16 @@
+Multilateration across the whole upstairs
+Rx nodes in my room, lucy's room, cell and master bedroom hanging from ceiling lights
+
+All coordinate values of Rx are relative to the room.
+X values are taken from the wall closest to the (0,0), and go the opposite way in +ve direction
+Values from Lucy's room and master room should be seen as -ve from (0,0) point
+All y coordinates are taken from the wall closest to the (0,0) point, all of which are 0.63m out, takes into account wardrobe
+should be added back on.
+
+All values from other rooms apart from mine should take this into account.
+
+
+Rx0 -> Cell (1.26, 1.95, 2.1)
+Rx1 -> My room (1.3, 1.7, 2.1)
+Rx2 -> Lucy's room (2.15, 1.56, 2.1)
+Rx3 -> Master bedroom (2.32, 1.9, 1.75)

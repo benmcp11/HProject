@@ -5,11 +5,12 @@ import time
 
 ser = serial.Serial('COM4', baudrate=115200)  # Replace '/dev/tty.usbserial' with your UART port and configure other settings as needed
 
-txX = -1.34
-txY = 3.2
-txZ = 0.9
+txX = 2.29
+txY = round(0.58-0.63,1)
+txZ = 0.8
 
-csv_filename = f'ExperimentData17\Exp17_Multilat_Tx(x{txX}m, y{txY}m, z{txZ}m,).csv'
+room = 'BathM'
+csv_filename = f'ExperimentData18\Exp18_Multilat_Tx(x{txX}m, y{txY}m, z{txZ}m,)_{room}.csv'
 
 csv_header = ['RxNID', 'TXNID', 'PacketNo', 'TxRSSI', 'RSSI0','RSSI1','RSSI2','RSSI3']
 
