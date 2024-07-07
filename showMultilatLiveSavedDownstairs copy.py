@@ -235,6 +235,7 @@ for csv_file in csv_files:
                 print(getN.knownNValues(known_points,rxRssiDic, show = 0))
                 print(getN.weightedN(nDicS,rxNID, limit = 2))
 
+
                 weightedN = getN.weightedN(nDicS,rxNID, limit=2)
 
                 # if weightedN>2:

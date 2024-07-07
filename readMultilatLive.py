@@ -42,6 +42,10 @@ x_data_av = deque(maxlen=10)  # Keep only the last 10 data points
 y_data_av = deque(maxlen=10)
 line_av, =  ax.plot(x_data_av, y_data_av, '-xm', label = 'Rolling Av')
 
+x_data_n = deque(maxlen=10)  # Keep only the last 10 data points
+y_data_n = deque(maxlen=10)
+line_n, =  ax.plot(x_data_n, y_data_n, '-xk', label = 'N modified')
+
 displayCircle=  0
 circleData = []
 for i in range(4):
@@ -117,20 +121,20 @@ txX = 1
 txY = 1
 txZ = 0.75
 ty = 'Demo'
-r = 'Room0'
+r = 'TEST'
 
-csv_filename = f'ExperimentData21\Exp21_Multilat_Live_{ty}_{r}.csv'
+csv_filename = f'TEST{ty}_{r}.csv'
 
 csv_header = ['RxNID', 'TXNID', 'PacketNo', 'TxRSSI', 'RSSI0','RSSI1','RSSI2','RSSI3']
 
 rxRssiDic = {}
 noRx = 4
-
+nDistList= []
 pointer = []
 for i in range(noRx):
     rxRssiDic[i] = []
     pointer.append(0)
-
+    nDistList.append(0)
     for j in range(noRx):
         rxRssiDic[i].append(j)
 
@@ -148,6 +152,10 @@ with open(csv_filename, 'w', newline='') as csvfile:
         count = 0
         rssiList = [[],[],[],[]]
         distancesList = [0,0,0,0]
+        start = time.time()
+        prev = start
+        print(start)
+        print('\n'*10)
         while True:
             # Read data from UART
             uart_data = ser.readline().decode().strip().strip('\0')
@@ -161,9 +169,9 @@ with open(csv_filename, 'w', newline='') as csvfile:
                 rxNID = int(split_data[0])
                 rxRSSI = split_data[6]
                 if rxNID != 0:
-                    rxRssiDic[0][rxNID] = rxRSSI
+                    rxRssiDic[0][rxNID] = int(rxRSSI)
 
-                    rxRssiDic[rxNID] = split_data[7].split('_')
+                    rxRssiDic[rxNID] = [int(val) for val in split_data[7].split('_')]
             
 
                 for i in range(1,6):
@@ -175,26 +183,31 @@ with open(csv_filename, 'w', newline='') as csvfile:
                     output.append(rxRssiDic[rxNID])
                     # print(output)
                     csv_writer.writerow(output)
-
+                    
                     # # Flush the CSV file to ensure data is written immediately
                     csvfile.flush()
                     rssiTotal+=int(rssi)
-
+                
+                if rxNID == 0:
+                    
+                    print(time.time()-prev)
+                    prev = time.time()
                 rssiList[int(rxNID)] = rssiTotal/5
 
-                # rxRssi2 = {"KEY":rxRssiDic}
-                # nDicS, n = getN.knownNValues(known_points,rxRssi2, limit = 2)
+                rxRssi2 = {"KEY":rxRssiDic}
+                print(rxRssi2)
+                nDicS, weightedN = getN.knownNValues(known_points,rxRssi2, limit = 2)
 
                 # print(getN.knownNValues(known_points,rxRssi2, show = 0))
                 # print(getN.weightedN(nDicS,rxNID, limit = 2))
 
-                # weightedN = getN.weightedN(nDicS,rxNID, limit=2)
+                weightedN = getN.weightedN(nDicS,rxNID, limit=2)
 
                 # if weightedN>3:
-                #     n = getN.weightedN(nDicS,rxNID, limit = 2)
+                #     N = getN.weightedN(nDicS,rxNID, limit = 2)
 
                 distancesList[int(rxNID)] = estimateDistance(rssiTotal/5, n)
-
+                nDistList[int(rxNID)] = estimateDistance(rssiTotal/5, weightedN)
                 rollingAv[rxNID][pointer[rxNID]] = distancesList[rxNID]
 
                 pointer[rxNID]+=1
@@ -222,6 +235,13 @@ with open(csv_filename, 'w', newline='') as csvfile:
                     # Update plot
                     line.set_xdata(x_data)
                     line.set_ydata(y_data)
+
+                    # coordinates_n = multilaterate(known_points, nDistList)
+                    # x_data_n.append(coordinates_n[0])
+                    # y_data_n.append(coordinates_n[1])
+
+                    # line_n.set_xdata(x_data_n)
+                    # line_n.set_ydata(y_data_n)
 
                     # ax.plot(coordinates[0], coordinates[1],'bx')
                     if 0 not in rollingAv[0]:
